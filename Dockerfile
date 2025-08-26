@@ -2,11 +2,11 @@ FROM maven:3.8.4-openjdk-17 AS builder
 
 WORKDIR /app
 
-COPY .mvn mvnw pom.xml ./
+COPY mvn pom.xml ./
 
 COPY src ./src
 
-RUN chmod +x mvnw && ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 FROM openjdk:17-jdk-alpine
 
