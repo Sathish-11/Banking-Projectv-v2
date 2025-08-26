@@ -6,7 +6,7 @@ COPY .mvn mvnw pom.xml ./
 
 COPY src ./src
 
-RUN chmod +x ./mvnw && ./mvnw clean package -DskipTests
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
 
 FROM openjdk:17-jdk-alpine
 
