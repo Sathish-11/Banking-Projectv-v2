@@ -54,11 +54,6 @@ pipeline {
                 sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit test'
             }
         }
-        '''stage('Deploy Monitoring on Test Environment') {
-            steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/monitoring.yml --limit test'
-            }
-        }'''
         stage('Approval for Production Deployment') {
             steps {
                 timeout(time: 1, unit: 'HOURS') {
@@ -76,10 +71,5 @@ pipeline {
                 sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit prod'
             }
         }
-        '''stage('Deploy Monitoring on Production Environment') {
-            steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/monitoring.yml --limit prod'
-            }
-        }'''
     }
 }
