@@ -8,16 +8,19 @@ pipeline {
     }
     stages {
         stage('Checkout Code') {
+            agent { label 'master' } 
             steps {
                 git branch: 'main', credentialsId: 'Github', url: 'https://github.com/Sathish-11/Banking-Project1.git'
             }
         }
         stage('Build Application') {
+            agent { label 'master' } 
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
         stage('Run Tests') {
+            agent { label 'master' } 
             steps {
                 sh 'mvn test'
             }
@@ -28,11 +31,13 @@ pipeline {
             }
         }
         stage('Build Docker Image') {
+            agent { label 'master' } 
             steps {
                 sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
             }
         }
         stage('Push Docker Image') {
+            agent { label 'master' } 
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
                     script {
