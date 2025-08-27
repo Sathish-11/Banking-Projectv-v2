@@ -1,0 +1,4 @@
+app_name: bankingapp
+app_port: 8081
+docker_image: "sathish1102/bankingapp"
+docker_tag: "latest"
