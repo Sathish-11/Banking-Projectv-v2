@@ -1,6 +1,6 @@
 pipeline {
     agent none
-    
+
     environment {
         DOCKER_IMAGE = "sathish1102/bankingapp"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
@@ -50,19 +50,19 @@ pipeline {
             }
         }
         stage('Setup Docker on test nodes') {
-            agent any
+            agent { label 'master' }
             steps {
                 sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit test'
             }
         }
         stage('Deploy Application on Test Environment') {
-            agent any
+            agent { label 'master' }
             steps {
                 sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit test'
             }
         }
         stage('Approval for Production Deployment') {
-            agent any
+            agent { label 'master' }
             steps {
                 timeout(time: 1, unit: 'HOURS') {
                     input message: 'Approve Deployment to Production?', ok: 'Deploy'
@@ -70,13 +70,13 @@ pipeline {
             }
         }
         stage('Setup Production Environment') {
-            agent any
+            agent { label 'master' }
             steps {
                 sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit prod' 
             }
         }
         stage('Deploy Application on Production Environment') {
-            agent any
+            agent { label 'master' }
             steps {
                 sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit prod'
             }
