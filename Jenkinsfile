@@ -64,6 +64,7 @@ pipeline {
                         export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
+                        --become \
                         ansible/playbooks/setup_docker.yml --limit test
                     """
                 }
@@ -79,6 +80,7 @@ pipeline {
                         export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
+                        --become \
                         ansible/playbooks/deploy_app.yml --limit test
                     """
                 }
@@ -102,6 +104,7 @@ pipeline {
                         export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
+                        --become \
                         ansible/playbooks/setup_docker.yml --limit prod
                     """
                 }
@@ -117,6 +120,7 @@ pipeline {
                         export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
+                        --become \
                         ansible/playbooks/deploy_app.yml --limit prod
                     """
                 }
