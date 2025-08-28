@@ -58,32 +58,26 @@ pipeline {
         stage('Setup Docker on Test Nodes') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
-                        --become \
-                        ansible/playbooks/setup_docker.yml --limit test
-                    """
-                }
+                sh """
+                    sudo -u devops ANSIBLE_HOST_KEY_CHECKING=False \
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                    --private-key /home/devops/.ssh/id_rsa \
+                    --become \
+                    ansible/playbooks/setup_docker.yml --limit test
+                """
             }
         }
 
         stage('Deploy Application on Test Environment') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
-                        --become \
-                        ansible/playbooks/deploy_app.yml --limit test
-                    """
-                }
+                sh """
+                    sudo -u devops ANSIBLE_HOST_KEY_CHECKING=False \
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                    --private-key /home/devops/.ssh/id_rsa \
+                    --become \
+                    ansible/playbooks/deploy_app.yml --limit test
+                """
             }
         }
 
@@ -98,32 +92,26 @@ pipeline {
         stage('Setup Production Environment') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
-                        --become \
-                        ansible/playbooks/setup_docker.yml --limit prod
-                    """
-                }
+                sh """
+                    sudo -u devops ANSIBLE_HOST_KEY_CHECKING=False \
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                    --private-key /home/devops/.ssh/id_rsa \
+                    --become \
+                    ansible/playbooks/setup_docker.yml --limit prod
+                """
             }
         }
 
         stage('Deploy Application on Production Environment') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
-                        --become \
-                        ansible/playbooks/deploy_app.yml --limit prod
-                    """
-                }
+                sh """
+                    sudo -u devops ANSIBLE_HOST_KEY_CHECKING=False \
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                    --private-key /home/devops/.ssh/id_rsa \
+                    --become \
+                    ansible/playbooks/deploy_app.yml --limit prod
+                """
             }
         }
     }
