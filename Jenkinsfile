@@ -49,37 +49,48 @@ pipeline {
                 }
             }
         }
-        stage('Setup Docker on test nodes') {
-            agent { label 'master' }
+        stage('Ansible Deployment') {
             steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit test'
-            }
-        }
-        stage('Deploy Application on Test Environment') {
-            agent { label 'master' }
-            steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit test'
-            }
-        }
-        stage('Approval for Production Deployment') {
-            agent { label 'master' }
-            steps {
-                timeout(time: 1, unit: 'HOURS') {
-                    input message: 'Approve Deployment to Production?', ok: 'Deploy'
+                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh', keyFileVariable: 'SSH_KEY')]) {
+                    script {
+                        stage('Setup Docker on test nodes') {
+                            sh """
+                               ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                               --private-key $SSH_KEY \
+                               ansible/playbooks/setup_docker.yml --limit test
+                            """
+                        }
+
+                        stage('Deploy Application on Test Environment') {
+                            sh """
+                               ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                               --private-key $SSH_KEY \
+                               ansible/playbooks/deploy_app.yml --limit test
+                            """
+                        }
+
+                        stage('Approval for Production Deployment') {
+                            timeout(time: 1, unit: 'HOURS') {
+                                input message: 'Approve Deployment to Production?', ok: 'Deploy'
+                            }
+                        }
+
+                        stage('Setup Production Environment') {
+                            sh """
+                               ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                               --private-key $SSH_KEY \
+                               ansible/playbooks/setup_docker.yml --limit prod
+                            """
+                        }
+
+                        stage('Deploy Application on Production Environment') {
+                            sh """
+                               ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                               --private-key $SSH_KEY \
+                               ansible/playbooks/deploy_app.yml --limit prod
+                            """
+                        }
+                    }
                 }
             }
         }
-        stage('Setup Production Environment') {
-            agent { label 'master' }
-            steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit prod' 
-            }
-        }
-        stage('Deploy Application on Production Environment') {
-            agent { label 'master' }
-            steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit prod'
-            }
-        }
-    }
-}
