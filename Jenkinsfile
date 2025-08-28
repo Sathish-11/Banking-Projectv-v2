@@ -2,7 +2,7 @@ pipeline {
     agent none
 
     environment {
-        DOCKER_IMAGE = "sathish1102/bankingapp"
+        DOCKER_IMAGE = "sathish1102/bankingapp1"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
         ANSIBLE_INVENTORY = 'inventory.yml'
     }
