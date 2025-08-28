@@ -1,5 +1,6 @@
 pipeline {
-
+    agent none
+    
     environment {
         DOCKER_IMAGE = "sathish1102/bankingapp"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
