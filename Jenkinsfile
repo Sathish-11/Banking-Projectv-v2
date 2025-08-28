@@ -50,6 +50,7 @@ pipeline {
             }
         }
         stage('Ansible Deployment') {
+            agent { label 'master' }
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh', keyFileVariable: 'SSH_KEY')]) {
                     script {
