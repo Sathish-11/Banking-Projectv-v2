@@ -61,6 +61,7 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
                         ansible/playbooks/setup_docker.yml --limit test
@@ -75,6 +76,7 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
                         ansible/playbooks/deploy_app.yml --limit test
@@ -97,6 +99,7 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
                         ansible/playbooks/setup_docker.yml --limit prod
@@ -111,6 +114,7 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
                         ansible-playbook -i ${ANSIBLE_INVENTORY} \
                         --private-key "$SSH_KEY" \
                         ansible/playbooks/deploy_app.yml --limit prod
