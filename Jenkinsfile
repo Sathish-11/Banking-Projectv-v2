@@ -57,7 +57,7 @@ pipeline {
                         stage('Setup Docker on test nodes') {
                             sh """
                                ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                               --private-key $SSH_KEY \
+                               --private-key "$SSH_KEY" \
                                ansible/playbooks/setup_docker.yml --limit test
                             """
                         }
@@ -65,7 +65,7 @@ pipeline {
                         stage('Deploy Application on Test Environment') {
                             sh """
                                ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                               --private-key $SSH_KEY \
+                               --private-key "$SSH_KEY" \
                                ansible/playbooks/deploy_app.yml --limit test
                             """
                         }
@@ -79,7 +79,7 @@ pipeline {
                         stage('Setup Production Environment') {
                             sh """
                                ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                               --private-key $SSH_KEY \
+                               --private-key "$SSH_KEY" \
                                ansible/playbooks/setup_docker.yml --limit prod
                             """
                         }
@@ -87,7 +87,7 @@ pipeline {
                         stage('Deploy Application on Production Environment') {
                             sh """
                                ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                               --private-key $SSH_KEY \
+                               --private-key "$SSH_KEY" \
                                ansible/playbooks/deploy_app.yml --limit prod
                             """
                         }
