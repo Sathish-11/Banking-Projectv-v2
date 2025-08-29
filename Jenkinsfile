@@ -1,5 +1,3 @@
-pipeline {
-    agent none
 
     environment {
         DOCKER_IMAGE = "sathish1102/bankingapp1"
@@ -48,7 +46,7 @@ pipeline {
                                                   passwordVariable: 'PASS',
                                                   usernameVariable: 'USER')]) {
                     sh """
-                        echo $PASS | docker login -u $USER --password-stdin
+                        echo "\$PASS" | docker login -u "\$USER" --password-stdin
                         docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
                     """
                 }
@@ -62,10 +60,10 @@ pipeline {
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
+                        ansible-playbook -i ansible/inventory.yml \
+                        --private-key "\$SSH_KEY" \
                         --become \
-                        ansible/playbooks/setup_docker.yml --limit test
+                        ansible/playbooks/setup_docker.yml --limit test -vvv
                     """
                 }
             }
@@ -78,10 +76,11 @@ pipeline {
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
+                        ansible-playbook -i ansible/inventory.yml \
+                        --private-key "\$SSH_KEY" \
                         --become \
-                        ansible/playbooks/deploy_app.yml --limit test
+                        -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}" \
+                        ansible/playbooks/deploy_app.yml --limit test -vvv
                     """
                 }
             }
@@ -102,10 +101,10 @@ pipeline {
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
+                        ansible-playbook -i ansible/inventory.yml \
+                        --private-key "\$SSH_KEY" \
                         --become \
-                        ansible/playbooks/setup_docker.yml --limit prod
+                        ansible/playbooks/setup_docker.yml --limit prod -vvv
                     """
                 }
             }
@@ -118,10 +117,11 @@ pipeline {
                                                    keyFileVariable: 'SSH_KEY')]) {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                        --private-key "$SSH_KEY" \
+                        ansible-playbook -i ansible/inventory.yml \
+                        --private-key "\$SSH_KEY" \
                         --become \
-                        ansible/playbooks/deploy_app.yml --limit prod
+                        -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}" \
+                        ansible/playbooks/deploy_app.yml --limit prod -vvv
                     """
                 }
             }
