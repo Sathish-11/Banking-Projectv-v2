@@ -1,3 +1,5 @@
+pipeline {
+    agent none
 
     environment {
         DOCKER_IMAGE = "sathish1102/bankingapp1"
