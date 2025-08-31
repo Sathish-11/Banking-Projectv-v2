@@ -1,29 +1,29 @@
 pipeline {
     agent none
-
     environment {
-        DOCKER_IMAGE = "sathish1102/bankingapp1"
+        DOCKER_IMAGE = "sathish1102/bankingapp"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
         ANSIBLE_INVENTORY = 'ansible/inventory.yml'
+        ANSIBLE_PRIVATE_KEY = credentials('ansible-private-key') // Store key in Jenkins credentials
+        APP_NAME = 'banking-app'
+        HOST_PORT = '8080'
+        APP_PORT = '8080'
     }
-
     stages {
         stage('Checkout Code') {
-            agent { label 'master' }
+            agent { label 'master' } 
             steps {
-                git branch: 'main', url: 'https://github.com/Sathish-11/Banking-Project1.git'
+                git branch: 'main', credentialsId: 'Github', url: 'https://github.com/Sathish-11/Banking-Project1.git'
             }
         }
-
         stage('Build Application') {
-            agent { label 'master' }
+            agent { label 'master' } 
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
-
         stage('Run Tests') {
-            agent { label 'master' }
+            agent { label 'master' } 
             steps {
                 sh 'mvn test'
             }
@@ -33,99 +33,122 @@ pipeline {
                 }
             }
         }
-
         stage('Build Docker Image') {
-            agent { label 'master' }
+            agent { label 'master' } 
             steps {
                 sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
             }
         }
-
         stage('Push Docker Image') {
-            agent { label 'master' }
+            agent { label 'master' } 
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker-hub',
-                                                  passwordVariable: 'PASS',
-                                                  usernameVariable: 'USER')]) {
-                    sh """
-                        echo "\$PASS" | docker login -u "\$USER" --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    """
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    script {
+                        sh """
+                            echo $PASS | docker login -u $USER --password-stdin && \
+                            docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                           """
+                    }
                 }
             }
         }
-
-        stage('Setup Docker on Test Nodes') {
+        stage('Setup Docker on Test Environment') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
+                script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ansible/inventory.yml \
-                        --private-key "\$SSH_KEY" \
-                        --become \
-                        ansible/playbooks/setup_docker.yml --limit test -vvv
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            ansible/playbooks/setup_docker.yml \
+                            --limit test -v
                     """
                 }
             }
         }
-
         stage('Deploy Application on Test Environment') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
+                script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ansible/inventory.yml \
-                        --private-key "\$SSH_KEY" \
-                        --become \
-                        -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}" \
-                        ansible/playbooks/deploy_app.yml --limit test -vvv
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            -e docker_image=${DOCKER_IMAGE} \
+                            -e docker_tag=${DOCKER_TAG} \
+                            -e app_name=${APP_NAME} \
+                            -e host_port=${HOST_PORT} \
+                            -e app_port=${APP_PORT} \
+                            ansible/playbooks/deploy_app.yml \
+                            --limit test -v
                     """
                 }
             }
         }
-
         stage('Approval for Production Deployment') {
+            agent { label 'master' }
             steps {
                 timeout(time: 1, unit: 'HOURS') {
                     input message: 'Approve Deployment to Production?', ok: 'Deploy'
                 }
             }
         }
-
         stage('Setup Production Environment') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
+                script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ansible/inventory.yml \
-                        --private-key "\$SSH_KEY" \
-                        --become \
-                        ansible/playbooks/setup_docker.yml --limit prod -vvv
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            ansible/playbooks/setup_docker.yml \
+                            --limit prod -v
                     """
                 }
             }
         }
-
         stage('Deploy Application on Production Environment') {
             agent { label 'master' }
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: 'ansible-ssh',
-                                                   keyFileVariable: 'SSH_KEY')]) {
+                script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ansible/inventory.yml \
-                        --private-key "\$SSH_KEY" \
-                        --become \
-                        -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}" \
-                        ansible/playbooks/deploy_app.yml --limit prod -vvv
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            -e docker_image=${DOCKER_IMAGE} \
+                            -e docker_tag=${DOCKER_TAG} \
+                            -e app_name=${APP_NAME} \
+                            -e host_port=${HOST_PORT} \
+                            -e app_port=${APP_PORT} \
+                            ansible/playbooks/deploy_app.yml \
+                            --limit prod -v
                     """
                 }
+            }
+        }
+    }
+    post {
+        always {
+            node('master') {
+                // Clean up Docker images to save space
+                sh """
+                    docker image prune -f
+                    docker system df
+                """
+            }
+        }
+        failure {
+            node('master') {
+                echo "Pipeline failed. Check logs for details."
+            }
+        }
+        success {
+            node('master') {
+                echo "Pipeline completed successfully!"
             }
         }
     }
