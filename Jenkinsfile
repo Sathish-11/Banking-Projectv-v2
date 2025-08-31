@@ -4,16 +4,13 @@ pipeline {
         DOCKER_IMAGE = "sathish1102/bankingapp"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
         ANSIBLE_INVENTORY = 'ansible/inventory.yml'
-        APP_NAME = 'banking-app'
-        HOST_PORT = '8080'
-        APP_PORT = '8080'
+        ANSIBLE_HOST_KEY_CHECKING = 'False'
     }
     stages {
         stage('Checkout Code') {
             agent { label 'master' } 
             steps {
-                checkout scm
-                sh 'ls -la'  // Debug: show workspace contents
+                git branch: 'main', credentialsId: 'Github', url: 'https://github.com/Sathish-11/Banking-Project1.git'
             }
         }
         stage('Build Application') {
@@ -43,46 +40,31 @@ pipeline {
             agent { label 'master' } 
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                    sh """
-                        echo \$PASS | docker login -u \$USER --password-stdin
-                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    """
+                    script {
+                        sh """
+                            echo $PASS | docker login -u $USER --password-stdin && \
+                            docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                           """
+                    }
                 }
             }
         }
-        stage('Setup Docker on Test Environment') {
+        stage('Setup Docker on test nodes') {
             agent { label 'master' }
             steps {
-                script {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
-                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
-                            --become \\
-                            ansible/playbooks/setup_docker.yml \\
-                            --limit test -v
-                    """
-                }
+                sh """
+                    export ANSIBLE_HOST_KEY_CHECKING=False
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit test -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}"
+                """
             }
         }
         stage('Deploy Application on Test Environment') {
             agent { label 'master' }
             steps {
-                script {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
-                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
-                            --become \\
-                            -e docker_image=${DOCKER_IMAGE} \\
-                            -e docker_tag=${DOCKER_TAG} \\
-                            -e app_name=${APP_NAME} \\
-                            -e host_port=${HOST_PORT} \\
-                            -e app_port=${APP_PORT} \\
-                            ansible/playbooks/deploy_app.yml \\
-                            --limit test -v
-                    """
-                }
+                sh """
+                    export ANSIBLE_HOST_KEY_CHECKING=False
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit test -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}"
+                """
             }
         }
         stage('Approval for Production Deployment') {
@@ -96,57 +78,31 @@ pipeline {
         stage('Setup Production Environment') {
             agent { label 'master' }
             steps {
-                script {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
-                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
-                            --become \\
-                            ansible/playbooks/setup_docker.yml \\
-                            --limit prod -v
-                    """
-                }
+                sh """
+                    export ANSIBLE_HOST_KEY_CHECKING=False
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit prod -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}"
+                """
             }
         }
         stage('Deploy Application on Production Environment') {
             agent { label 'master' }
             steps {
-                script {
-                    sh """
-                        export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
-                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
-                            --become \\
-                            -e docker_image=${DOCKER_IMAGE} \\
-                            -e docker_tag=${DOCKER_TAG} \\
-                            -e app_name=${APP_NAME} \\
-                            -e host_port=${HOST_PORT} \\
-                            -e app_port=${APP_PORT} \\
-                            ansible/playbooks/deploy_app.yml \\
-                            --limit prod -v
-                    """
-                }
+                sh """
+                    export ANSIBLE_HOST_KEY_CHECKING=False
+                    ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit prod -e "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}"
+                """
             }
         }
     }
     post {
         always {
-            node('master') {
-                sh """
-                    docker image prune -f || true
-                    docker system df || true
-                """
-            }
-        }
-        failure {
-            node('master') {
-                echo "Pipeline failed. Check logs for details."
-            }
+            cleanWs()
         }
         success {
-            node('master') {
-                echo "Pipeline completed successfully!"
-            }
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
         }
     }
 }
