@@ -1,10 +1,13 @@
 pipeline {
     agent none
-
     environment {
         DOCKER_IMAGE = "sathish1102/bankingapp"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
-        ANSIBLE_INVENTORY = 'inventory.yml'
+        ANSIBLE_INVENTORY = 'ansible/inventory.yml'
+        ANSIBLE_PRIVATE_KEY = credentials('ansible-private-key') // Store key in Jenkins credentials
+        APP_NAME = 'banking-app'
+        HOST_PORT = '8080'
+        APP_PORT = '8080'
     }
     stages {
         stage('Checkout Code') {
@@ -49,16 +52,39 @@ pipeline {
                 }
             }
         }
-        stage('Setup Docker on test nodes') {
+        stage('Setup Docker on Test Environment') {
             agent { label 'master' }
             steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit test'
+                script {
+                    sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            ansible/playbooks/setup_docker.yml \
+                            --limit test -v
+                    """
+                }
             }
         }
         stage('Deploy Application on Test Environment') {
             agent { label 'master' }
             steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit test'
+                script {
+                    sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            -e docker_image=${DOCKER_IMAGE} \
+                            -e docker_tag=${DOCKER_TAG} \
+                            -e app_name=${APP_NAME} \
+                            -e host_port=${HOST_PORT} \
+                            -e app_port=${APP_PORT} \
+                            ansible/playbooks/deploy_app.yml \
+                            --limit test -v
+                    """
+                }
             }
         }
         stage('Approval for Production Deployment') {
@@ -72,13 +98,57 @@ pipeline {
         stage('Setup Production Environment') {
             agent { label 'master' }
             steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/setup_docker.yml --limit prod' 
+                script {
+                    sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            ansible/playbooks/setup_docker.yml \
+                            --limit prod -v
+                    """
+                }
             }
         }
         stage('Deploy Application on Production Environment') {
             agent { label 'master' }
             steps {
-                sh 'ansible-playbook -i ${ANSIBLE_INVENTORY} ansible/playbooks/deploy_app.yml --limit prod'
+                script {
+                    sh """
+                        export ANSIBLE_HOST_KEY_CHECKING=False
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                            --private-key ${ANSIBLE_PRIVATE_KEY} \
+                            --become \
+                            -e docker_image=${DOCKER_IMAGE} \
+                            -e docker_tag=${DOCKER_TAG} \
+                            -e app_name=${APP_NAME} \
+                            -e host_port=${HOST_PORT} \
+                            -e app_port=${APP_PORT} \
+                            ansible/playbooks/deploy_app.yml \
+                            --limit prod -v
+                    """
+                }
+            }
+        }
+    }
+    post {
+        always {
+            node('master') {
+                // Clean up Docker images to save space
+                sh """
+                    docker image prune -f
+                    docker system df
+                """
+            }
+        }
+        failure {
+            node('master') {
+                echo "Pipeline failed. Check logs for details."
+            }
+        }
+        success {
+            node('master') {
+                echo "Pipeline completed successfully!"
             }
         }
     }
