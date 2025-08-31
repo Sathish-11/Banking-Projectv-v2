@@ -4,7 +4,6 @@ pipeline {
         DOCKER_IMAGE = "sathish1102/bankingapp"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
         ANSIBLE_INVENTORY = 'ansible/inventory.yml'
-        ANSIBLE_PRIVATE_KEY = credentials('ansible-private-key') // Store key in Jenkins credentials
         APP_NAME = 'banking-app'
         HOST_PORT = '8080'
         APP_PORT = '8080'
@@ -13,7 +12,8 @@ pipeline {
         stage('Checkout Code') {
             agent { label 'master' } 
             steps {
-                git branch: 'main', credentialsId: 'Github', url: 'https://github.com/Sathish-11/Banking-Project1.git'
+                checkout scm
+                sh 'ls -la'  // Debug: show workspace contents
             }
         }
         stage('Build Application') {
@@ -43,12 +43,10 @@ pipeline {
             agent { label 'master' } 
             steps {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-                    script {
-                        sh """
-                            echo $PASS | docker login -u $USER --password-stdin && \
-                            docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                           """
-                    }
+                    sh """
+                        echo \$PASS | docker login -u \$USER --password-stdin
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
                 }
             }
         }
@@ -58,10 +56,10 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                            --private-key ${ANSIBLE_PRIVATE_KEY} \
-                            --become \
-                            ansible/playbooks/setup_docker.yml \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
+                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
+                            --become \\
+                            ansible/playbooks/setup_docker.yml \\
                             --limit test -v
                     """
                 }
@@ -73,15 +71,15 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                            --private-key ${ANSIBLE_PRIVATE_KEY} \
-                            --become \
-                            -e docker_image=${DOCKER_IMAGE} \
-                            -e docker_tag=${DOCKER_TAG} \
-                            -e app_name=${APP_NAME} \
-                            -e host_port=${HOST_PORT} \
-                            -e app_port=${APP_PORT} \
-                            ansible/playbooks/deploy_app.yml \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
+                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
+                            --become \\
+                            -e docker_image=${DOCKER_IMAGE} \\
+                            -e docker_tag=${DOCKER_TAG} \\
+                            -e app_name=${APP_NAME} \\
+                            -e host_port=${HOST_PORT} \\
+                            -e app_port=${APP_PORT} \\
+                            ansible/playbooks/deploy_app.yml \\
                             --limit test -v
                     """
                 }
@@ -101,10 +99,10 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                            --private-key ${ANSIBLE_PRIVATE_KEY} \
-                            --become \
-                            ansible/playbooks/setup_docker.yml \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
+                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
+                            --become \\
+                            ansible/playbooks/setup_docker.yml \\
                             --limit prod -v
                     """
                 }
@@ -116,15 +114,15 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
-                            --private-key ${ANSIBLE_PRIVATE_KEY} \
-                            --become \
-                            -e docker_image=${DOCKER_IMAGE} \
-                            -e docker_tag=${DOCKER_TAG} \
-                            -e app_name=${APP_NAME} \
-                            -e host_port=${HOST_PORT} \
-                            -e app_port=${APP_PORT} \
-                            ansible/playbooks/deploy_app.yml \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \\
+                            --private-key /var/lib/jenkins/.ssh/id_rsa \\
+                            --become \\
+                            -e docker_image=${DOCKER_IMAGE} \\
+                            -e docker_tag=${DOCKER_TAG} \\
+                            -e app_name=${APP_NAME} \\
+                            -e host_port=${HOST_PORT} \\
+                            -e app_port=${APP_PORT} \\
+                            ansible/playbooks/deploy_app.yml \\
                             --limit prod -v
                     """
                 }
@@ -134,10 +132,9 @@ pipeline {
     post {
         always {
             node('master') {
-                // Clean up Docker images to save space
                 sh """
-                    docker image prune -f
-                    docker system df
+                    docker image prune -f || true
+                    docker system df || true
                 """
             }
         }
