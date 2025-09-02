@@ -1,6 +1,14 @@
-DOCKER_USER}/${APP_NAME}"
-        IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
-        JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
+pipeline {
+    agent none
+    
+    environment {
+        DOCKER_IMAGE = "sathish1102/bankingapp"
+        DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
+        ANSIBLE_INVENTORY = 'ansible/inventory.yml'
+        ANSIBLE_PRIVATE_KEY = credentials('ansible-private-key')
+        APP_NAME = 'banking-app'
+        HOST_PORT = '8080'
+        APP_PORT = '8081'
     }
     
     stages {
@@ -177,10 +185,9 @@ DOCKER_USER}/${APP_NAME}"
     post {
         always {
             node('master') {
-                // Clean up Docker images to save space
                 sh """
-                    docker image prune -f
-                    docker system df
+                    docker image prune -f || true
+                    docker system df || true
                 """
                 echo 'Pipeline execution completed'
             }
@@ -188,31 +195,12 @@ DOCKER_USER}/${APP_NAME}"
         failure {
             node('master') {
                 echo "Pipeline failed. Check logs for details."
-                emailext(
-                    subject: "❌ Pipeline Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-                    body: """
-                        Build Failed!
-                        Job: ${env.JOB_NAME}
-                        Build Number: ${env.BUILD_NUMBER}
-                        Build URL: ${env.BUILD_URL}
-                    """,
-                    to: "admin@banking-app.com"
-                )
             }
         }
         success {
             node('master') {
                 echo "Pipeline completed successfully!"
-                emailext(
-                    subject: "✅ Pipeline Success: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-                    body: """
-                        Build Successful!
-                        Job: ${env.JOB_NAME}
-                        Build Number: ${env.BUILD_NUMBER}
-                        Docker Image: ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    """,
-                    to: "admin@banking-app.com"
-                )
+                echo "Docker Image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
             }
         }
     }
