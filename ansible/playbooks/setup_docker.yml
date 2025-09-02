@@ -1,5 +1,18 @@
 ---
-- hosts: test:prod
+- name: Setup Docker Environment
+  hosts: test:prod
   become: true
+  gather_facts: yes
+  
   roles:
-    - role: ../roles/docker
+    - docker
+    
+  post_tasks:
+    - name: Verify Docker installation
+      command: docker --version
+      register: docker_version
+      
+    - name: Display Docker version
+      debug:
+        msg: "Docker installed: {{ docker_version.stdout }}"
+
