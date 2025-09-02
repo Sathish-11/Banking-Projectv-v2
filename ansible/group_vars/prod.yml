@@ -1,5 +1,2 @@
----
-# Production environment specific variables  
 host_port: 88
 docker_tag: "stable"
-spring_profile: "prod"
