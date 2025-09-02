@@ -1,35 +1,10 @@
 ---
-- name: Stop existing container if running
-  community.docker.docker_container:
-    name: "{{ app_name }}"
-    state: stopped
-  ignore_errors: yes
-
-- name: Remove existing container
-  community.docker.docker_container:
-    name: "{{ app_name }}"
-    state: absent
-  ignore_errors: yes
-
 - name: Pull Docker image
   community.docker.docker_image:
     name: "{{ docker_image }}:{{ docker_tag }}"
     source: pull
-    force_source: yes
 
-- name: Create application directory
-  file:
-    path: /opt/{{ app_name }}
-    state: directory
-    mode: '0755'
-
-- name: Create logs directory
-  file:
-    path: /opt/{{ app_name }}/logs
-    state: directory
-    mode: '0755'
-
-- name: Run application container
+- name: Run/Update container
   community.docker.docker_container:
     name: "{{ app_name }}"
     image: "{{ docker_image }}:{{ docker_tag }}"
@@ -37,24 +12,3 @@
     restart_policy: unless-stopped
     published_ports:
       - "{{ host_port }}:{{ app_port }}"
-    volumes:
-      - "/opt/{{ app_name }}/logs:/app/logs"
-    env:
-      SPRING_PROFILES_ACTIVE: "{{ spring_profile | default('prod') }}"
-      JAVA_OPTS: "-Xms512m -Xmx1024m"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:{{ app_port }}/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-- name: Wait for application to be ready
-  uri:
-    url: "http://{{ ansible_host }}:{{ host_port }}/actuator/health"
-    method: GET
-    status_code: 200
-  register: result
-  until: result.status == 200
-  retries: 10
-  delay: 30
