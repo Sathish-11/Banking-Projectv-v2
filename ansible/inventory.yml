@@ -2,7 +2,7 @@ all:
   vars:
     ansible_user: devopsadmin
     ansible_python_interpreter: /usr/bin/python3
-
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   children:
     test:
       hosts:
@@ -12,4 +12,3 @@ all:
       hosts:
         prod-vm:
           ansible_host: 192.168.17.135
-
