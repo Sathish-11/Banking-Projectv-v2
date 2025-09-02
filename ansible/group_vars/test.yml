@@ -1,5 +1,3 @@
----
-# Test environment specific variables
-docker_tag: "{{ lookup('env', 'BUILD_NUMBER') | default('latest') }}"
+docker_tag: "{{ lookup('env', 'BUILD_NUMBER') | default('latest') }}"  # or BUILD_NUMBER from Jenkins
+
 host_port: 9000
-spring_profile: "test"
