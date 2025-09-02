@@ -4,7 +4,7 @@ pipeline {
         DOCKER_IMAGE = "sathish1102/bankingapp"
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
         ANSIBLE_INVENTORY = 'ansible/inventory.yml'
-        ANSIBLE_PRIVATE_KEY = credentials('ansible-private-key')
+        ANSIBLE_PRIVATE_KEY = credentials('ansible-private-key') // Store key in Jenkins credentials
         APP_NAME = 'banking-app'
         HOST_PORT = '8080'
         APP_PORT = '8080'
@@ -13,7 +13,7 @@ pipeline {
         stage('Checkout Code') {
             agent { label 'master' } 
             steps {
-                git branch: 'main', credentialsId: 'Github', url: 'https://github.com/Sathish-11/Banking-Projectv-v2.git'
+                git branch: 'main', credentialsId: 'Github', url: 'https://github.com/Sathish-11/Banking-Project1.git'
             }
         }
         stage('Build Application') {
@@ -45,7 +45,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
                     script {
                         sh """
-                            echo \$PASS | docker login -u \$USER --password-stdin && \
+                            echo $PASS | docker login -u $USER --password-stdin && \
                             docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
                            """
                     }
@@ -58,11 +58,11 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        timeout 300 ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
                             --private-key ${ANSIBLE_PRIVATE_KEY} \
                             --become \
                             ansible/playbooks/setup_docker.yml \
-                            --limit test -vv
+                            --limit test -v
                     """
                 }
             }
@@ -73,7 +73,7 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        timeout 300 ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
                             --private-key ${ANSIBLE_PRIVATE_KEY} \
                             --become \
                             -e docker_image=${DOCKER_IMAGE} \
@@ -82,7 +82,7 @@ pipeline {
                             -e host_port=${HOST_PORT} \
                             -e app_port=${APP_PORT} \
                             ansible/playbooks/deploy_app.yml \
-                            --limit test -vv
+                            --limit test -v
                     """
                 }
             }
@@ -101,11 +101,11 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        timeout 300 ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
                             --private-key ${ANSIBLE_PRIVATE_KEY} \
                             --become \
                             ansible/playbooks/setup_docker.yml \
-                            --limit prod -vv
+                            --limit prod -v
                     """
                 }
             }
@@ -116,7 +116,7 @@ pipeline {
                 script {
                     sh """
                         export ANSIBLE_HOST_KEY_CHECKING=False
-                        timeout 300 ansible-playbook -i ${ANSIBLE_INVENTORY} \
+                        ansible-playbook -i ${ANSIBLE_INVENTORY} \
                             --private-key ${ANSIBLE_PRIVATE_KEY} \
                             --become \
                             -e docker_image=${DOCKER_IMAGE} \
@@ -125,7 +125,7 @@ pipeline {
                             -e host_port=${HOST_PORT} \
                             -e app_port=${APP_PORT} \
                             ansible/playbooks/deploy_app.yml \
-                            --limit prod -vv
+                            --limit prod -v
                     """
                 }
             }
@@ -136,8 +136,8 @@ pipeline {
             node('master') {
                 // Clean up Docker images to save space
                 sh """
-                    docker image prune -f || true
-                    docker system df || true
+                    docker image prune -f
+                    docker system df
                 """
             }
         }
