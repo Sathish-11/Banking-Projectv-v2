@@ -2,7 +2,8 @@ all:
   vars:
     ansible_user: devopsadmin
     ansible_python_interpreter: /usr/bin/python3
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30'
+    ansible_ssh_pipelining: true
   children:
     test:
       hosts:
