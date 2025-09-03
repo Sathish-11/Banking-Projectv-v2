@@ -1,10 +1,14 @@
 ---
 - hosts: test
   become: true
+  roles_path:
+    - ../roles
   roles:
     - app 
 
 - hosts: prod
   become: true
+  roles_path:
+    - ../roles
   roles:
     - app
