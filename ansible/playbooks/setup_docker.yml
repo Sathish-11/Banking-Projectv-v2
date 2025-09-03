@@ -1,5 +1,15 @@
 ---
-- hosts: test:prod
+- hosts: test
   become: true
+  roles_path:
+    - ../roles
   roles:
     - docker
+
+- hosts: prod
+  become: true
+  roles_path:
+    - ../roles
+  roles:
+    - docker
+    
